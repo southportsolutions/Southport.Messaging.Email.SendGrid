@@ -1,0 +1,14 @@
+variables:
+  namePrefix:  ${{ replace(variables['Build.SourceBranchName'],'@','-') }}
+
+  ${{ if not(contains(variables['Build.SourceBranchName'], 'release@')) }}:
+    version: '1.0.0-alpha1'
+  ${{ if contains(variables['Build.SourceBranchName'], 'release@') }}:
+    version: ${{ replace(variables['Build.SourceBranchName'],'release@','') }}
+    
+  vmImage: 'ubuntu-latest'
+  buildConfiguration: 'Release'
+  projectName: 'Southport.Messaging.Email.SendGrid'
+  sonarCloudOrganization: 'southport'
+  sonarCloudProjectKey: 'southport_Southport.Messaging.SendGrid'
+  sonarCloudProjectName: 'Southport.Messaging.SendGrid'
