@@ -5,11 +5,11 @@
     <LangVersion>8.0</LangVersion>
     <Authors>Robert Anstett</Authors>
     <Company>Southport Solutions, LLC</Company>
-    <Copyright>2020</Copyright>
-    <Description>MailGun Implementation of the Southport.Messaging.Email.Core</Description>
+    <Copyright>2021</Copyright>
+    <Description>SendGrid Implementation of the Southport.Messaging.Email.Core</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageReleaseNotes>Added Handlebars to the library.</PackageReleaseNotes>
+    <PackageReleaseNotes>Initial Release.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
