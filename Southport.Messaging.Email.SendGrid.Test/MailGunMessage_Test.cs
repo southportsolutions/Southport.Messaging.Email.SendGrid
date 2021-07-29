@@ -193,7 +193,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
             var options = new EmailOptions()
             {
                 ApiKey = _options.ApiKey,
-                TestEmailAddresses = string.Join(",", testAddresses)
+                TestEmailAddresses = string.Join(",", testAddresses),
+                UseTestMode = _options.UseTestMode
             };
             var recipient = new EmailRecipient("rob@southportsolutions.com", substitutions: new Dictionary<string, object>() {{"name", "John Doe"}, {"states", new List<string> {"CA", "CT", "TN"}}});
             var message = new SendGridMessage(_httpClient, options);
@@ -218,7 +219,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
             var options = new EmailOptions()
             {
                 ApiKey = _options.ApiKey,
-                TestEmailAddresses = string.Join(",", testAddresses)
+                TestEmailAddresses = string.Join(",", testAddresses),
+                UseTestMode = _options.UseTestMode
             };
             
             var timeZone = new VTimeZone("America/Chicago");
