@@ -17,7 +17,6 @@ namespace Southport.Messaging.Email.SendGrid.Interfaces
         ISendGridMessage SetCategories(List<string> tags);
         ISendGridMessage AddHeader(string key, string header);
 
-        Task<IEnumerable<IEmailResult>> SubstituteAndSend(string domain, CancellationToken cancellationToken = default);
         Task<IEnumerable<IEmailResult>> SubstituteAndSend(CancellationToken cancellationToken = default);
 
     }

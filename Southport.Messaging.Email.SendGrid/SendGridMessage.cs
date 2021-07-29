@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -8,7 +7,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using HandlebarsDotNet;
-using Newtonsoft.Json;
 using SendGrid.Helpers.Mail;
 using Southport.Messaging.Email.Core.EmailAttachments;
 using Southport.Messaging.Email.Core.Recipient;
@@ -22,10 +20,9 @@ namespace Southport.Messaging.Email.SendGrid
     {
         private readonly HttpClient _httpClient;
         private readonly ISendGridOptions _options;
-        private List<Stream> _streams = new List<Stream>();
 
         #region FromAddress
-        
+
         public IEmailAddress FromAddress { get; set; }
 
         public string From => FromAddress.ToString();
@@ -360,21 +357,18 @@ namespace Southport.Messaging.Email.SendGrid
             Tracking = tracking;
             TrackingClicks = trackingClicks;
             TrackingOpens = trackingOpens;
+
+            TestMode = _options.UseTestMode;
         }
 
         #region Send
 
         public async Task<IEnumerable<IEmailResult>> Send(CancellationToken cancellationToken = default)
         {
-            return await Send(_options.Domain, cancellationToken);
+            return await Send(false, cancellationToken);
         }
 
-        public async Task<IEnumerable<IEmailResult>> Send(string domain, CancellationToken cancellationToken = default)
-        {
-            return await Send(domain, false, cancellationToken);
-        }
-
-        private async Task<IEnumerable<IEmailResult>> Send(string domain, bool substitute = false, CancellationToken cancellationToken = default)
+        private async Task<IEnumerable<IEmailResult>> Send(bool substitute = false, CancellationToken cancellationToken = default)
         {
             if (FromAddress == null)
             {
@@ -391,41 +385,28 @@ namespace Southport.Messaging.Email.SendGrid
                 throw new SouthportMessagingException("The message must have a message or reference a template.");
             }
 
-            var sendGridApiMessages = GetMessageApi();
+            var sendGridApiMessages = GetMessageApi(substitute);
 
             var results = new List<IEmailResult>();
-            try
-            {
                 foreach (var message in sendGridApiMessages)
                 {
-                    var stringContent = new StringContent(JsonConvert.SerializeObject(message), Encoding.UTF8, "application/json");
+                    var json = message.Value.Serialize();
+                    var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
                     var responseMessage = await _httpClient.PostAsync("https://api.sendgrid.com/v3/mail/send", stringContent, cancellationToken);
                     results.Add(new EmailResult(message.Key, responseMessage));
                 }
-            }
-            finally
-            {
-                foreach (var stream in _streams)
-                {
-#if NET5_0 || NETSTANDARD2_1
-                    await stream.DisposeAsync();
-#else
-                    stream.Dispose();
-#endif
-                }
-            }
             
             return results;
         }
 
         public async Task<IEnumerable<IEmailResult>> SubstituteAndSend(CancellationToken cancellationToken = default)
         {
-            return await Send(_options.Domain, true, cancellationToken);
+            return await Send(true, cancellationToken);
         }
         
         public async Task<IEnumerable<IEmailResult>> SubstituteAndSend(string domain, CancellationToken cancellationToken = default)
         {
-            return await Send(domain, true, cancellationToken);
+            return await Send(true, cancellationToken);
         }
 
         #endregion
@@ -453,13 +434,21 @@ namespace Southport.Messaging.Email.SendGrid
         {
             var message = new global::SendGrid.Helpers.Mail.SendGridMessage();
 
+            var ccAddresses = CcAddressesSendGridValid.Any() ? CcAddressesSendGridValid.Where(e => e.Email != emailRecipient.EmailAddress.Address && BccAddressesSendGridValid.Any(bcc => bcc.Email == e.Email) == false).ToList() : null;
+            var bccAddresses = BccAddressesSendGridValid.Any() ? BccAddressesSendGridValid.Where(e => e.Email != emailRecipient.EmailAddress.Address && CcAddressesSendGridValid.Any(bcc => bcc.Email == e.Email) == false).ToList() : null;
             message.AddTo(new global::SendGrid.Helpers.Mail.EmailAddress(emailRecipient.EmailAddress.Address, emailRecipient.EmailAddress.Name), personalization: new Personalization()
             {
-                Ccs = CcAddressesSendGridValid,
-                Bccs = BccAddressesSendGridValid,
-                TemplateData = emailRecipient.Substitutions,
-                CustomArgs = emailRecipient.CustomArguments
+                Ccs = ccAddresses != null && ccAddresses.Any() ? ccAddresses : null,
+                Bccs = bccAddresses != null && bccAddresses.Any() ? bccAddresses : null,
+                TemplateData = string.IsNullOrWhiteSpace(TemplateId) == false && emailRecipient.Substitutions.Any() ? emailRecipient.Substitutions : null,
+                CustomArgs = emailRecipient.CustomArguments.Any() ? emailRecipient.CustomArguments : null
             });
+
+            #region From
+            
+            message.SetFrom(FromAddress.Address, FromAddress.Name);
+
+            #endregion
 
             #region Subject
             
@@ -469,21 +458,27 @@ namespace Southport.Messaging.Email.SendGrid
 
             #region Text/HTML/Template
 
-            if (string.IsNullOrWhiteSpace(TemplateId))
+            if (!string.IsNullOrWhiteSpace(TemplateId))
             {
-                Substitute(Text, "text", substitute ? emailRecipient.Substitutions : null);
-                Substitute(Html, "html", substitute ? emailRecipient.Substitutions : null);
+                message.TemplateId = TemplateId;
+                if (emailRecipient.Substitutions.ContainsKey("subject") == false)
+                {
+                    emailRecipient.Substitutions["subject"] = Subject;
+                }
             }
             else
             {
-                message.TemplateId = TemplateId;
+                message.PlainTextContent = Substitute(Text, substitute ? emailRecipient.Substitutions : null);
+                message.HtmlContent = Substitute(Html, substitute ? emailRecipient.Substitutions : null);
             }
+
+            
 
             #endregion
 
             #region Categories
 
-            message.Categories = Categories;
+            message.Categories = Categories.Any() ? Categories : null;
 
             #endregion
 
@@ -514,13 +509,13 @@ namespace Southport.Messaging.Email.SendGrid
 
             #region CustomArgs
 
-            message.CustomArgs = CustomArguments;
+            message.CustomArgs = CustomArguments.Any() ? CustomArguments : null;
 
             #endregion
 
             #region CustomHeaders
 
-            message.Headers = CustomHeaders;
+            message.Headers = CustomHeaders.Any() ? CustomHeaders : null;
 
             #endregion
 
@@ -537,7 +532,7 @@ namespace Southport.Messaging.Email.SendGrid
 
         }
 
-        private string Substitute(string text, string key, Dictionary<string, object> substitutions)
+        private string Substitute(string text, Dictionary<string, object> substitutions)
         {
             if (string.IsNullOrEmpty(text))
             {
@@ -571,28 +566,17 @@ namespace Southport.Messaging.Email.SendGrid
 
             if (CcAddresses.Any())
             {
-                CcAddresses = testEmailAddresses.Select(emailAddress => new EmailAddress(emailAddress.Trim()));
+                CcAddresses = new List<IEmailAddress>();
             }
 
             if (BccAddresses.Any())
             {
-                BccAddresses = testEmailAddresses.Select(emailAddress => new EmailAddress(emailAddress.Trim()));
+                BccAddresses = new List<IEmailAddress>();
             }
 
             toAddresses = toAddressesTemp;
 
             return toAddresses;
-        }
-
-        private Stream GetStream(string content)
-        {
-            var stream = new MemoryStream();
-            var sw = new StreamWriter(stream, Encoding.UTF8);
-            sw.Write(content);
-            sw.Flush();//otherwise you are risking empty stream
-            stream.Seek(0, SeekOrigin.Begin);
-            _streams.Add(stream);
-            return stream;
         }
 
         #endregion

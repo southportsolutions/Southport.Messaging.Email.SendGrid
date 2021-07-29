@@ -38,7 +38,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Southport.Messaging.Email.MailGun\Southport.Messaging.Email.SendGrid.csproj" />
+    <ProjectReference Include="..\Southport.Messaging.Email.SendGrid\Southport.Messaging.Email.SendGrid.csproj" />
   </ItemGroup>
 
 </Project>
