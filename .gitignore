@@ -328,4 +328,4 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
-/Southport.Messaging.Email.MailGun.Test/appsettings.json
+/Southport.Messaging.Email.SendGrid.Test/appsettings.json
