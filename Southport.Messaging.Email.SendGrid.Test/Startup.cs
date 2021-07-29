@@ -25,6 +25,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
                 if (string.IsNullOrWhiteSpace(Options.ApiKey))
                 {
                     Options.ApiKey = Environment.GetEnvironmentVariable("APIKEY");
+                    Options.UseTestMode = bool.Parse(Environment.GetEnvironmentVariable("USETESTMODE") ?? "false"); bool.TrueString
                 }
 
                 if (string.IsNullOrEmpty(Options.ApiKey))
