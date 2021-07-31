@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HandlebarsDotNet;
 using SendGrid.Helpers.Mail;
+using Southport.Messaging.Email.Core;
 using Southport.Messaging.Email.Core.EmailAttachments;
 using Southport.Messaging.Email.Core.Recipient;
 using Southport.Messaging.Email.Core.Result;
@@ -22,6 +23,11 @@ namespace Southport.Messaging.Email.SendGrid
         private readonly ISendGridOptions _options;
 
         #region FromAddress
+
+        IEmailMessageCore IEmailMessageCore.AddCustomArguments(Dictionary<string, string> customArguments)
+        {
+            return AddCustomArguments(customArguments);
+        }
 
         public IEmailAddress FromAddress { get; set; }
 
@@ -335,6 +341,130 @@ namespace Southport.Messaging.Email.SendGrid
         public SendGridMessage AddRecipientVariable(string emailAddress, string key, string value)
         {
             throw new NotImplementedException();
+        }
+
+        #endregion
+
+        #region Core Methods
+
+                IEmailMessageCore IEmailMessageCore.AddFromAddress(string emailAddress, string name)
+        {
+            return AddFromAddress(emailAddress, name);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddToAddress(IEmailRecipient recipient)
+        {
+            return AddToAddress(recipient);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddToAddress(string emailAddress, string name)
+        {
+            return AddToAddress(emailAddress, name);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddToAddresses(List<IEmailRecipient> recipients)
+        {
+            return AddToAddresses(recipients);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddCcAddress(IEmailAddress emailAddress)
+        {
+            return AddCcAddress(emailAddress);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddCcAddress(string emailAddress, string name)
+        {
+            return AddCcAddress(emailAddress, name);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddCcAddresses(List<IEmailAddress> emailAddresses)
+        {
+            return AddCcAddresses(emailAddresses);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddBccAddress(IEmailAddress emailAddress)
+        {
+            return AddBccAddress(emailAddress);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddBccAddress(string emailAddress, string name)
+        {
+            return AddBccAddress(emailAddress, name);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddBccAddresses(List<IEmailAddress> emailAddresses)
+        {
+            return AddBccAddresses(emailAddresses);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetSubject(string subject)
+        {
+            return SetSubject(subject);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetText(string text)
+        {
+            return SetText(text);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetHtml(string html)
+        {
+            return SetHtml(html);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddAttachments(IEmailAttachment attachment)
+        {
+            return AddAttachments(attachment);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddAttachments(List<IEmailAttachment> attachments)
+        {
+            return AddAttachments(attachments);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetTemplate(string template)
+        {
+            return SetTemplate(template);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetDeliveryTime(DateTime deliveryTime)
+        {
+            return SetDeliveryTime(deliveryTime);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetTestMode(bool testMode)
+        {
+            return SetTestMode(testMode);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetTracking(bool tracking)
+        {
+            return SetTracking(tracking);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetTrackingClicks(bool tracking)
+        {
+            return SetTrackingClicks(tracking);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetTrackingOpens(bool tracking)
+        {
+            return SetTrackingOpens(tracking);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetReplyTo(string emailAddress)
+        {
+            return SetReplyTo(emailAddress);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddCustomArgument(string key, string value)
+        {
+            return AddCustomArgument(key, value);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddFromAddress(IEmailAddress emailAddress)
+        {
+            return AddFromAddress(emailAddress);
         }
 
         #endregion
