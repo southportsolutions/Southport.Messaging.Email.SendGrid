@@ -13,21 +13,24 @@ namespace Southport.Messaging.Email.SendGrid.Interfaces
     {
         IEmailAddress ReplyToAddress { get; set; }
         List<string> Categories { get; set; }
+        string BatchId { get; set; }
 
         ISendGridMessage SetReplyTo(IEmailAddress emailAddress);
         ISendGridMessage SetCategory(string tag);
         ISendGridMessage SetCategories(List<string> tags);
         ISendGridMessage AddHeader(string key, string header);
+        ISendGridMessage SetBatchId(string batchId);
 
-        Task<IEnumerable<IEmailResult>> SubstituteAndSend(CancellationToken cancellationToken = default);
+        Task<IEnumerable<IEmailResult>> Send(bool substitute, bool batch = false, CancellationToken cancellationToken = default);
         
         #region Overrid Core Methods
 
-                /// <summary>
+        /// <summary>
         /// Adds from address.
         /// </summary>
         /// <param name="emailAddress">The address.</param>
         /// <returns>IEmailMessage.</returns>
+        [Obsolete("Use SetFromAddress")]
         new ISendGridMessage AddFromAddress(IEmailAddress emailAddress);
         /// <summary>
         /// Adds from address.
@@ -35,7 +38,21 @@ namespace Southport.Messaging.Email.SendGrid.Interfaces
         /// <param name="emailAddress">The address.</param>
         /// <param name="name">The name.</param>
         /// <returns>IEmailMessage.</returns>
+        [Obsolete("Use SetFromAddress")]
         new ISendGridMessage AddFromAddress(string emailAddress, string name = null);
+        /// <summary>
+        /// Adds from address.
+        /// </summary>
+        /// <param name="emailAddress">The address.</param>
+        /// <returns>IEmailMessage.</returns>
+        new ISendGridMessage SetFromAddress(IEmailAddress emailAddress);
+        /// <summary>
+        /// Adds from address.
+        /// </summary>
+        /// <param name="emailAddress">The address.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>IEmailMessage.</returns>
+        new ISendGridMessage SetFromAddress(string emailAddress, string name = null);
         /// <summary>
         /// Adds to address.
         /// </summary>

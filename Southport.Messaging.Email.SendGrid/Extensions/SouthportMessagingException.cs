@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Southport.Messaging.Email.SendGrid
+namespace Southport.Messaging.Email.SendGrid.Extensions
 {
     public class SouthportMessagingException : Exception
     {

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Ical.Net;
 using Ical.Net.CalendarComponents;
@@ -11,7 +12,9 @@ using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
 using Southport.Messaging.Email.Core.EmailAttachments;
 using Southport.Messaging.Email.Core.Recipient;
+using Southport.Messaging.Email.SendGrid.HttpClients;
 using Southport.Messaging.Email.SendGrid.Interfaces;
+using Southport.Messaging.Email.SendGrid.Message;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -21,7 +24,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
     {
         private const string SubjectPrefix = "SendGrid - ";
         private const string TemplateId = "d-63308b30a4234c7b8fc2050926526538";
-        private readonly HttpClient _httpClient;
+        private readonly SendGridHttpClient _httpClient;
+        private readonly HttpClient _internalHttpClient;
         private readonly ISendGridOptions _options;
         
         private readonly  ITestOutputHelper _output;
@@ -29,8 +33,9 @@ namespace Southport.Messaging.Email.SendGrid.Test
         public SendGridMessageTest(ITestOutputHelper output)
         {
             _output = output;
-            _httpClient = new HttpClient();
             _options = Startup.GetOptions();
+            _internalHttpClient = new HttpClient();
+            _httpClient = new SendGridHttpClient(_internalHttpClient, _options);
         }
 
         #region Simple Message
@@ -44,6 +49,26 @@ namespace Southport.Messaging.Email.SendGrid.Test
                 .AddToAddress(emailAddress)
                 .SetSubject($"{SubjectPrefix}Simple")
                 .SetText("This is a test email.").Send();
+            
+
+            foreach (var response in responses)
+            {
+                _output.WriteLine(await response.ResponseMessage.Content.ReadAsStringAsync());
+                Assert.True(response.ResponseMessage.IsSuccessStatusCode);
+                Assert.Equal(emailAddress, response.EmailRecipient.EmailAddress.Address);
+            }
+        }
+
+        [Fact]
+        public async Task Send_Batch_Message()
+        {
+            var emailAddress = "test1@southport.solutions";
+            var message = new SendGridMessage(_httpClient, _options);
+            var responses = await message.AddFromAddress("test2@southport.solutions")
+                .AddToAddress(emailAddress)
+                .SetSubject($"{SubjectPrefix}Simple")
+                .SetDeliveryTime(DateTime.UtcNow.AddSeconds(20))
+                .SetText("This is a test email.").Send(false, true, CancellationToken.None);
             
 
             foreach (var response in responses)
@@ -114,7 +139,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
             var responses = await message.AddFromAddress("test2@southport.solutions")
                 .AddToAddress(emailAddress)
                 .SetSubject($"{SubjectPrefix}Text with Substitutions")
-                .SetText("Dear {{FirstName}} This is a test email.").SubstituteAndSend();
+                .SetText("Dear {{FirstName}} This is a test email.").Send(true);
 
 
             foreach (var response in responses)
@@ -139,7 +164,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
             var responses = (await message.AddFromAddress("test2@southport.solutions")
                 .AddToAddresses(emailRecipients)
                 .SetSubject($"{SubjectPrefix}Html With Substitutions")
-                .SetHtml(html).SubstituteAndSend()).ToList();
+                .SetHtml(html).Send(true)).ToList();
 
 
             for (var i = 0; i < responses.Count(); i++)
@@ -269,7 +294,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
         public void Dispose()
         {
-            _httpClient.Dispose();
+            _internalHttpClient.Dispose();
         }
     }
 }

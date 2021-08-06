@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using HandlebarsDotNet;
@@ -12,22 +9,19 @@ using Southport.Messaging.Email.Core;
 using Southport.Messaging.Email.Core.EmailAttachments;
 using Southport.Messaging.Email.Core.Recipient;
 using Southport.Messaging.Email.Core.Result;
+using Southport.Messaging.Email.SendGrid.Extensions;
+using Southport.Messaging.Email.SendGrid.HttpClients;
 using Southport.Messaging.Email.SendGrid.Interfaces;
 using EmailAddress = Southport.Messaging.Email.Core.Recipient.EmailAddress;
 
-namespace Southport.Messaging.Email.SendGrid
+namespace Southport.Messaging.Email.SendGrid.Message
 {
     public class SendGridMessage : ISendGridMessage
     {
-        private readonly HttpClient _httpClient;
+        private readonly ISendGridHttpClient _httpClient;
         private readonly ISendGridOptions _options;
 
         #region FromAddress
-
-        IEmailMessageCore IEmailMessageCore.AddCustomArguments(Dictionary<string, string> customArguments)
-        {
-            return AddCustomArguments(customArguments);
-        }
 
         public IEmailAddress FromAddress { get; set; }
 
@@ -40,6 +34,18 @@ namespace Southport.Messaging.Email.SendGrid
         }
 
         public ISendGridMessage AddFromAddress(string address, string name = null)
+        {
+            FromAddress = new EmailAddress(address, name);
+            return this;
+        }
+
+        public ISendGridMessage SetFromAddress(IEmailAddress address)
+        {
+            FromAddress = address;
+            return this;
+        }
+
+        public ISendGridMessage SetFromAddress(string address, string name = null)
         {
             FromAddress = new EmailAddress(address, name);
             return this;
@@ -256,6 +262,18 @@ namespace Southport.Messaging.Email.SendGrid
 
         #endregion
 
+        #region Batch
+
+        public string BatchId{get; set;}
+
+        public ISendGridMessage SetBatchId(string batchId)
+        {
+            BatchId = batchId;
+            return this;
+        }
+
+        #endregion
+
         #region TestMode
         
         public bool? TestMode { get; set; }
@@ -347,9 +365,24 @@ namespace Southport.Messaging.Email.SendGrid
 
         #region Core Methods
 
-                IEmailMessageCore IEmailMessageCore.AddFromAddress(string emailAddress, string name)
+        IEmailMessageCore IEmailMessageCore.AddFromAddress(string emailAddress, string name)
         {
             return AddFromAddress(emailAddress, name);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddFromAddress(IEmailAddress emailAddress)
+        {
+            return AddFromAddress(emailAddress);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetFromAddress(string emailAddress, string name)
+        {
+            return AddFromAddress(emailAddress, name);
+        }
+
+        IEmailMessageCore IEmailMessageCore.SetFromAddress(IEmailAddress emailAddress)
+        {
+            return AddFromAddress(emailAddress);
         }
 
         IEmailMessageCore IEmailMessageCore.AddToAddress(IEmailRecipient recipient)
@@ -462,17 +495,16 @@ namespace Southport.Messaging.Email.SendGrid
             return AddCustomArgument(key, value);
         }
 
-        IEmailMessageCore IEmailMessageCore.AddFromAddress(IEmailAddress emailAddress)
+        IEmailMessageCore IEmailMessageCore.AddCustomArguments(Dictionary<string, string> customArguments)
         {
-            return AddFromAddress(emailAddress);
+            return AddCustomArguments(customArguments);
         }
 
         #endregion
 
-        public SendGridMessage(HttpClient httpClient, ISendGridOptions options, bool tracking = true, bool trackingClicks = true, bool trackingOpens = true)
+        public SendGridMessage(ISendGridHttpClient httpClient, ISendGridOptions options, bool tracking = true, bool trackingClicks = true, bool trackingOpens = true)
         {
             _httpClient = httpClient;
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
 
             _options = options;
             ToAddresses = new List<IEmailRecipient>();
@@ -495,17 +527,17 @@ namespace Southport.Messaging.Email.SendGrid
 
         public async Task<IEnumerable<IEmailResult>> Send(CancellationToken cancellationToken = default)
         {
-            return await Send(false, cancellationToken);
+            return await Send(false, false, cancellationToken);
         }
 
-        private async Task<IEnumerable<IEmailResult>> Send(bool substitute = false, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<IEmailResult>> Send(bool substitute, bool batch = false, CancellationToken cancellationToken = default)
         {
             if (FromAddress == null)
             {
                 throw new SouthportMessagingException("The from address is required.");
             }
 
-            if (ToAddressesValid.Any()==false && CcAddressesValid.Any()==false && BccAddressesValid.Any()==false)
+            if (ToAddressesValid.Any() == false && CcAddressesValid.Any() == false && BccAddressesValid.Any() == false)
             {
                 throw new SouthportMessagingException("There must be at least 1 recipient.");
             }
@@ -517,26 +549,23 @@ namespace Southport.Messaging.Email.SendGrid
 
             var sendGridApiMessages = GetMessageApi(substitute);
 
-            var results = new List<IEmailResult>();
-                foreach (var message in sendGridApiMessages)
+            if (batch)
+            {
+                BatchId = await _httpClient.GetBatchIdAsync(cancellationToken);
+                if (BatchId == null)
                 {
-                    var json = message.Value.Serialize();
-                    var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
-                    var responseMessage = await _httpClient.PostAsync("https://api.sendgrid.com/v3/mail/send", stringContent, cancellationToken);
-                    results.Add(new EmailResult(message.Key, responseMessage));
+                    throw new Exception("Could not get a new Batch ID");
                 }
-            
-            return results;
-        }
+            }
 
-        public async Task<IEnumerable<IEmailResult>> SubstituteAndSend(CancellationToken cancellationToken = default)
-        {
-            return await Send(true, cancellationToken);
-        }
-        
-        public async Task<IEnumerable<IEmailResult>> SubstituteAndSend(string domain, CancellationToken cancellationToken = default)
-        {
-            return await Send(true, cancellationToken);
+            var results = new List<IEmailResult>();
+            foreach (var message in sendGridApiMessages)
+            {
+                var responseMessage = await _httpClient.SendAsync(message.Value, cancellationToken);
+                results.Add(new EmailResult(message.Key, responseMessage));
+            }
+
+            return results;
         }
 
         #endregion

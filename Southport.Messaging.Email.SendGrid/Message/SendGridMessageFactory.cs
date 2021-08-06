@@ -1,15 +1,17 @@
 ﻿using System.Net.Http;
 using Southport.Messaging.Email.Core;
+using Southport.Messaging.Email.SendGrid.HttpClients;
 using Southport.Messaging.Email.SendGrid.Interfaces;
+using Southport.Messaging.Email.SendGrid.Message.Interfaces;
 
-namespace Southport.Messaging.Email.SendGrid
+namespace Southport.Messaging.Email.SendGrid.Message
 {
     public class SendGridMessageFactory : ISendGridMessageFactory
     {
-        private readonly HttpClient _httpClient;
+        private readonly ISendGridHttpClient _httpClient;
         private readonly ISendGridOptions _options;
 
-        public SendGridMessageFactory(HttpClient httpClient, ISendGridOptions options)
+        public SendGridMessageFactory(ISendGridHttpClient httpClient, ISendGridOptions options)
         {
             _httpClient = httpClient;
             _options = options;
