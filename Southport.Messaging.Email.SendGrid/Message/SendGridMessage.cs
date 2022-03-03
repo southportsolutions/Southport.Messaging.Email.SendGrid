@@ -600,11 +600,24 @@ namespace Southport.Messaging.Email.SendGrid.Message
                 Ccs = ccAddresses != null && ccAddresses.Any() ? ccAddresses : null,
                 Bccs = bccAddresses != null && bccAddresses.Any() ? bccAddresses : null,
                 TemplateData = string.IsNullOrWhiteSpace(TemplateId) == false && emailRecipient.Substitutions.Any() ? emailRecipient.Substitutions : null,
-                CustomArgs = emailRecipient.CustomArguments.Any() ? emailRecipient.CustomArguments : null
+                CustomArgs = emailRecipient.CustomArguments.Any() ? emailRecipient.CustomArguments : null,
+                
             });
 
+            #region ReplyTo
+
+            if (ReplyToAddress != null)
+            {
+
+                message.SetReplyTo(
+                    new global::SendGrid.Helpers.Mail.EmailAddress(ReplyToAddress.Address, ReplyToAddress.Name));
+            }
+
+            #endregion
+
+
             #region From
-            
+
             message.SetFrom(FromAddress.Address, FromAddress.Name);
 
             #endregion
