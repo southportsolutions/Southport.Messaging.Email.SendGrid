@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading;
@@ -10,6 +11,9 @@ using Ical.Net;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
+using Moq;
+using Moq.Protected;
+using Newtonsoft.Json;
 using Southport.Messaging.Email.Core.EmailAttachments;
 using Southport.Messaging.Email.Core.Recipient;
 using Southport.Messaging.Email.SendGrid.HttpClients;
@@ -57,6 +61,52 @@ namespace Southport.Messaging.Email.SendGrid.Test
                 Assert.True(response.ResponseMessage.IsSuccessStatusCode);
                 Assert.Equal(emailAddress, response.EmailRecipient.EmailAddress.Address);
             }
+        }
+
+        [Fact]
+        public async Task SetReplyTo()
+        {
+
+            var handlerMock = new Mock<HttpMessageHandler>();
+            var httpClient = new HttpClient(handlerMock.Object);
+
+            var response = new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK
+            };
+
+            handlerMock
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(response);
+
+            var sendGridClient = new SendGridHttpClient(httpClient, _options);
+
+            var emailAddress = "michael@southportsolutions.com";
+            var replyTo = "test2@southport.solutions";
+            var replyToName = "name";
+            var message = new SendGridMessage(sendGridClient, _options);
+            var responses = await message.AddFromAddress("test2@southport.solutions")
+                .AddToAddress(emailAddress)
+                .SetSubject($"{SubjectPrefix}Simple")
+                .SetReplyTo(new EmailAddress(replyTo, replyToName))
+                .SetText("This is a test email.").Send();
+
+
+            var request = (HttpRequestMessage) handlerMock.Invocations[0].Arguments[0];
+
+            var str = await request.Content.ReadAsStringAsync();
+
+            var content = JsonConvert.DeserializeObject<dynamic>(str);
+
+            var replyToResult = (string) content.reply_to.email;
+            var replyToNameResult = (string)content.reply_to.name;
+
+            Assert.Equal(replyTo, replyToResult);
+            Assert.Equal(replyToName, replyToNameResult);
         }
 
         [Fact]

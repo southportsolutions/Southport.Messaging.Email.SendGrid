@@ -30,7 +30,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
                 if (string.IsNullOrEmpty(Options.ApiKey))
                 {
-                    throw new Exception("Unable to get the MailGun API Key.");
+                    throw new Exception("Unable to get the Sendgrid API Key.");
                 }
             }
 
