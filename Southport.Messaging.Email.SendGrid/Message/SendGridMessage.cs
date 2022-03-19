@@ -75,6 +75,10 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         public ISendGridMessage AddToAddresses(List<IEmailRecipient> addresses)
         {
+            if (addresses == null || !addresses.Any())
+            {
+                return this;
+            }
             ((List<IEmailRecipient>)ToAddresses).AddRange(addresses);
             return this;
         }
@@ -109,6 +113,10 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         public ISendGridMessage AddCcAddresses(List<IEmailAddress> addresses)
         {
+            if (addresses == null || !addresses.Any())
+            {
+                return this;
+            }
             _ccAddresses.AddRange(addresses);
             return this;
         }
@@ -143,6 +151,10 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         public ISendGridMessage AddBccAddresses(List<IEmailAddress> addresses)
         {
+            if (addresses == null || !addresses.Any())
+            {
+                return this;
+            }
             _bccAddresses.AddRange(addresses);
             return this;
         }
@@ -214,6 +226,10 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         public ISendGridMessage AddAttachments(List<IEmailAttachment> attachments)
         {
+            if (attachments == null || !attachments.Any())
+            {
+                return this;
+            }
             Attachments = attachments;
             return this;
         }
@@ -242,9 +258,13 @@ namespace Southport.Messaging.Email.SendGrid.Message
             return this;
         }
 
-        public ISendGridMessage SetCategories(List<string> tags)
+        public ISendGridMessage SetCategories(List<string> categories)
         {
-            Categories.AddRange(tags);
+            if (categories == null || !categories.Any())
+            {
+                return this;
+            }
+            Categories.AddRange(categories);
             return this;
         }
 
