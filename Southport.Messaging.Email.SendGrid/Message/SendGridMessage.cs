@@ -562,7 +562,8 @@ namespace Southport.Messaging.Email.SendGrid.Message
             foreach (var message in sendGridApiMessages)
             {
                 var responseMessage = await _httpClient.SendAsync(message.Value, cancellationToken);
-                results.Add(new EmailResult(message.Key, responseMessage));
+                var result = new EmailResult(message.Key, responseMessage.IsSuccessStatusCode, responseMessage.Content != null ? await responseMessage.Content.ReadAsStringAsync() : null);
+                results.Add(result);
             }
 
             return results;
@@ -614,7 +615,6 @@ namespace Southport.Messaging.Email.SendGrid.Message
             }
 
             #endregion
-
 
             #region From
 
