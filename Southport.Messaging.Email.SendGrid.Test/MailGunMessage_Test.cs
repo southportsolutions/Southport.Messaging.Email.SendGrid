@@ -27,7 +27,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
     public class SendGridMessageTest : IDisposable
     {
         private const string SubjectPrefix = "SendGrid - ";
-        private const string TemplateId = "d-63308b30a4234c7b8fc2050926526538";
+        private const string TemplateId = "d-12703069ad524547be220c8240965964";
         private readonly SendGridHttpClient _httpClient;
         private readonly HttpClient _internalHttpClient;
         private readonly ISendGridOptions _options;
@@ -57,8 +57,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
             foreach (var response in responses)
             {
-                _output.WriteLine(await response.ResponseMessage.Content.ReadAsStringAsync());
-                Assert.True(response.ResponseMessage.IsSuccessStatusCode);
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
                 Assert.Equal(emailAddress, response.EmailRecipient.EmailAddress.Address);
             }
         }
@@ -123,8 +123,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
             foreach (var response in responses)
             {
-                _output.WriteLine(await response.ResponseMessage.Content.ReadAsStringAsync());
-                Assert.True(response.ResponseMessage.IsSuccessStatusCode);
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
                 Assert.Equal(emailAddress, response.EmailRecipient.EmailAddress.Address);
             }
         }
@@ -146,8 +146,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
             foreach (var response in responses)
             {
-                _output.WriteLine(await response.ResponseMessage.Content.ReadAsStringAsync());
-                Assert.True(response.ResponseMessage.IsSuccessStatusCode);
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
                 Assert.Equal(emailAddress, response.EmailRecipient.EmailAddress.Address);
             }
         }
@@ -171,8 +171,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
             foreach (var response in responses)
             {
-                _output.WriteLine(await response.ResponseMessage.Content.ReadAsStringAsync());
-                Assert.True(response.ResponseMessage.IsSuccessStatusCode);
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
                 Assert.Equal(emailAddress, response.EmailRecipient.EmailAddress.Address);
             }
         }
@@ -194,8 +194,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
             foreach (var response in responses)
             {
-                _output.WriteLine(await response.ResponseMessage.Content.ReadAsStringAsync());
-                Assert.True(response.ResponseMessage.IsSuccessStatusCode);
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
                 Assert.Equal(emailAddress.EmailAddress.Address, response.EmailRecipient.EmailAddress.Address);
             }
         }
@@ -221,8 +221,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
             {
                 var response = responses.ElementAt(i);
                 var recipient = emailRecipients.ElementAt(i);
-                _output.WriteLine(await response.ResponseMessage.Content.ReadAsStringAsync());
-                Assert.True(response.ResponseMessage.IsSuccessStatusCode);
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
                 Assert.Equal(recipient.EmailAddress.Address, response.EmailRecipient.EmailAddress.Address);
             }
         }
@@ -254,8 +254,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
             foreach (var response in responses)
             {
-                _output.WriteLine(await response.ResponseMessage.Content.ReadAsStringAsync());
-                Assert.True(response.ResponseMessage.IsSuccessStatusCode);
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
                 Assert.Equal(recipient.EmailAddress.Address, response.EmailRecipient.EmailAddress.Address);
             }
         }
@@ -280,8 +280,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
             foreach (var response in responses)
             {
-                _output.WriteLine(await response.ResponseMessage.Content.ReadAsStringAsync());
-                Assert.True(response.ResponseMessage.IsSuccessStatusCode);
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
                 Assert.Contains(testAddresses, s => s.Equals(response.EmailRecipient.EmailAddress.Address));
             }
         }
@@ -334,9 +334,52 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
             foreach (var response in responses)
             {
-                _output.WriteLine(await response.ResponseMessage.Content.ReadAsStringAsync());
-                Assert.True(response.ResponseMessage.IsSuccessStatusCode);
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
                 Assert.Contains(testAddresses, s => s.Equals(response.EmailRecipient.EmailAddress.Address));
+            }
+        }
+
+        #endregion
+
+        #region Send Email Delayed
+
+        [Fact]
+        public async Task Send_Simple_Message_Delayed_Delivery()
+        {
+            var emailAddress = "test1@southport.solutions";
+            var message = new SendGridMessage(_httpClient, _options);
+            var responses = await message.AddFromAddress("test2@southport.solutions")
+                .AddToAddress(emailAddress)
+                .SetSubject($"{SubjectPrefix}Simple - Delay 5 Minutes - Time {DateTime.UtcNow:G}")
+                .SetDeliveryTime(DateTime.UtcNow.AddMinutes(5))
+                .SetText("This is a test email.").Send();
+
+
+            foreach (var response in responses)
+            {
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
+                Assert.Equal(emailAddress, response.EmailRecipient.EmailAddress.Address);
+            }
+        }
+        [Fact]
+        public async Task Send_Simple_Message_Delayed_1Day_Delivery()
+        {
+            var emailAddress = "test1@southport.solutions";
+            var message = new SendGridMessage(_httpClient, _options);
+            var responses = await message.AddFromAddress("test2@southport.solutions")
+                .AddToAddress(emailAddress)
+                .SetSubject($"{SubjectPrefix}Simple - Delay 1 Day - Time {DateTime.UtcNow:G}")
+                .SetDeliveryTime(DateTime.UtcNow.AddDays(1))
+                .SetText("This is a test email.").Send();
+
+
+            foreach (var response in responses)
+            {
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
+                Assert.Equal(emailAddress, response.EmailRecipient.EmailAddress.Address);
             }
         }
 
