@@ -1,20 +1,26 @@
-﻿using System.Net.Http;
+﻿using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using Microsoft.Extensions.Options;
 using Southport.Messaging.Email.Core;
-using Southport.Messaging.Email.SendGrid.HttpClients;
 using Southport.Messaging.Email.SendGrid.Interfaces;
 using Southport.Messaging.Email.SendGrid.Message.Interfaces;
 
 namespace Southport.Messaging.Email.SendGrid.Message
 {
-    public class SendGridMessageFactory : ISendGridMessageFactory
+    public class SendGridMessageFactory<T> : ISendGridMessageFactory where T : class, ISendGridOptions
     {
-        private readonly ISendGridHttpClient _httpClient;
+        private readonly HttpClient _httpClient;
         private readonly ISendGridOptions _options;
 
-        public SendGridMessageFactory(ISendGridHttpClient httpClient, ISendGridOptions options)
+        public SendGridMessageFactory(HttpClient httpClient, IOptions<T> options)
         {
             _httpClient = httpClient;
-            _options = options;
+            
+            _httpClient.BaseAddress = new Uri("https://api.sendgrid.com/v3/");
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.Value.ApiKey);
+
+            _options = options.Value;
         }
 
 
