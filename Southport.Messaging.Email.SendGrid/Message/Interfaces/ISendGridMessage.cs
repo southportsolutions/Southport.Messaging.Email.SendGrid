@@ -195,6 +195,19 @@ namespace Southport.Messaging.Email.SendGrid.Interfaces
         /// <param name="customArguments">The custom arguments.</param>
         /// <returns>IEmailMessage.</returns>
         new ISendGridMessage AddCustomArguments(Dictionary<string, string> customArguments);
+        /// <summary>
+        /// Adds the substitution to message substitutions. (recipient custom arguments will override message level ones).
+        /// </summary>
+        /// <param name="key">The key.</param>
+        /// <param name="value">The value.</param>
+        /// <returns>IEmailMessage.</returns>
+        new ISendGridMessage AddSubstitutions(string key, object value);
+        /// <summary>
+        /// Adds the substitutions.
+        /// </summary>
+        /// <param name="substitutions">The substitutions.</param>
+        /// <returns>IEmailMessage.</returns>
+        new ISendGridMessage AddSubstitutions(Dictionary<string, object> substitutions);
 
         #endregion
 

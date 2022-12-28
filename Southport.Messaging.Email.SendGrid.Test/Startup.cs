@@ -7,9 +7,9 @@ namespace Southport.Messaging.Email.SendGrid.Test
 {
     public static class Startup
     {
-        public static ISendGridOptions Options { get; private set; }
+        public static EmailOptions Options { get; private set; }
 
-        public static ISendGridOptions GetOptions()
+        public static EmailOptions GetOptions()
         {
             if (Options == null)
             {

@@ -1,16 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using HandlebarsDotNet;
+using Newtonsoft.Json;
 using SendGrid.Helpers.Mail;
 using Southport.Messaging.Email.Core;
 using Southport.Messaging.Email.Core.EmailAttachments;
 using Southport.Messaging.Email.Core.Recipient;
 using Southport.Messaging.Email.Core.Result;
 using Southport.Messaging.Email.SendGrid.Extensions;
-using Southport.Messaging.Email.SendGrid.HttpClients;
 using Southport.Messaging.Email.SendGrid.Interfaces;
 using EmailAddress = Southport.Messaging.Email.Core.Recipient.EmailAddress;
 
@@ -18,7 +21,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
 {
     public class SendGridMessage : ISendGridMessage
     {
-        private readonly ISendGridHttpClient _httpClient;
+        private readonly HttpClient _httpClient;
         private readonly ISendGridOptions _options;
 
         #region FromAddress
@@ -55,7 +58,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         #region ToAddresses
   
-        public IEnumerable<IEmailRecipient> ToAddresses { get; set; }
+        public IEnumerable<IEmailRecipient> ToAddresses { get; set; } = new List<IEmailRecipient>();
 
         public IEnumerable<IEmailRecipient> ToAddressesValid => ToAddresses.Where(e => e.EmailAddress.IsValid);
         public IEnumerable<IEmailRecipient> ToAddressesInvalid => ToAddresses.Where(e => e.EmailAddress.IsValid==false);
@@ -87,7 +90,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         #region CcAddresses
 
-        private List<IEmailAddress> _ccAddresses = new List<IEmailAddress>();
+        private List<IEmailAddress> _ccAddresses = new();
         public IEnumerable<IEmailAddress> CcAddresses
         {
             get => _ccAddresses;
@@ -125,7 +128,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         #region BccAddresses
         
-        private List<IEmailAddress> _bccAddresses = new List<IEmailAddress>();
+        private List<IEmailAddress> _bccAddresses = new();
         public IEnumerable<IEmailAddress> BccAddresses
         {
             get => _bccAddresses;
@@ -216,7 +219,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         #region Attachments
 
-        public List<IEmailAttachment> Attachments { get; set; }
+        public List<IEmailAttachment> Attachments { get; set; } = new();
         
         public ISendGridMessage AddAttachments(IEmailAttachment attachment)
         {
@@ -249,8 +252,8 @@ namespace Southport.Messaging.Email.SendGrid.Message
         #endregion
 
         #region Categories
-        
-        public List<string> Categories { get; set; }
+
+        public List<string> Categories { get; set; } = new();
 
         public ISendGridMessage SetCategory(string tag)
         {
@@ -346,7 +349,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         #region Custom Variables
         
-        public Dictionary<string, string> CustomArguments { get; }
+        public Dictionary<string, string> CustomArguments { get; } = new ();
 
         public ISendGridMessage AddCustomArgument(string key, string value)
         {
@@ -366,9 +369,37 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         #endregion
 
+        #region Substitutions
+
+        public Dictionary<string, object> Substitutions { get; } = new();
+
+        public ISendGridMessage AddSubstitution(string key, object value)
+        {
+            Substitutions[key] = value;
+            return this;
+        }
+
+        public ISendGridMessage AddSubstitutions(string key, object value)
+        {
+            Substitutions[key] = value;
+            return this;
+        }
+
+        public ISendGridMessage AddSubstitutions(Dictionary<string, object> substitutions)
+        {
+            foreach (var substitution in substitutions)
+            {
+                Substitutions[substitution.Key] = substitution.Value;
+            }
+
+            return this;
+        }
+
+        #endregion
+
         #region Custom Headers
-        
-        public Dictionary<string, string> CustomHeaders { get; set; }
+
+        public Dictionary<string, string> CustomHeaders { get; set; } = new();
         
         public ISendGridMessage AddHeader(string key, string header)
         {
@@ -520,21 +551,23 @@ namespace Southport.Messaging.Email.SendGrid.Message
             return AddCustomArguments(customArguments);
         }
 
+        IEmailMessageCore IEmailMessageCore.AddSubstitutions(string key, object value)
+        {
+            return AddSubstitution(key, value);
+        }
+
+        IEmailMessageCore IEmailMessageCore.AddSubstitutions(Dictionary<string, object> customArguments)
+        {
+            return AddSubstitutions(customArguments);
+        }
+
         #endregion
 
-        public SendGridMessage(ISendGridHttpClient httpClient, ISendGridOptions options, bool tracking = true, bool trackingClicks = true, bool trackingOpens = true)
+        public SendGridMessage(HttpClient httpClient, ISendGridOptions options, bool tracking = true, bool trackingClicks = true, bool trackingOpens = true)
         {
             _httpClient = httpClient;
-
+            
             _options = options;
-            ToAddresses = new List<IEmailRecipient>();
-            CcAddresses = new List<IEmailAddress>();
-            BccAddresses = new List<IEmailAddress>();
-            Attachments = new List<IEmailAttachment>();
-            CustomHeaders = new Dictionary<string, string>();
-            CustomArguments = new Dictionary<string, string>();
-            Categories = new List<string>();
-
 
             Tracking = tracking;
             TrackingClicks = trackingClicks;
@@ -571,7 +604,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
             if (batch)
             {
-                BatchId = await _httpClient.GetBatchIdAsync(cancellationToken);
+                BatchId = await GetBatchIdAsync(cancellationToken);
                 if (BatchId == null)
                 {
                     throw new Exception("Could not get a new Batch ID");
@@ -581,8 +614,8 @@ namespace Southport.Messaging.Email.SendGrid.Message
             var results = new List<IEmailResult>();
             foreach (var message in sendGridApiMessages)
             {
-                var responseMessage = await _httpClient.SendAsync(message.Value, cancellationToken);
-                var result = new EmailResult(message.Key, responseMessage.IsSuccessStatusCode, responseMessage.Content != null ? await responseMessage.Content.ReadAsStringAsync() : null);
+                var responseMessage = await SendAsync(message.Value, cancellationToken);
+                var result = new EmailResult(message.Key, responseMessage.IsSuccessStatusCode, await responseMessage.Content.ReadAsStringAsync(cancellationToken));
                 results.Add(result);
             }
 
@@ -616,13 +649,25 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
             var ccAddresses = CcAddressesSendGridValid.Any() ? CcAddressesSendGridValid.Where(e => e.Email != emailRecipient.EmailAddress.Address && BccAddressesSendGridValid.Any(bcc => bcc.Email == e.Email) == false).ToList() : null;
             var bccAddresses = BccAddressesSendGridValid.Any() ? BccAddressesSendGridValid.Where(e => e.Email != emailRecipient.EmailAddress.Address && CcAddressesSendGridValid.Any(bcc => bcc.Email == e.Email) == false).ToList() : null;
+
+            var substitutions = emailRecipient.Substitutions ?? new Dictionary<string, object>();
+            foreach (var substitution in Substitutions.Where(s => !substitutions.ContainsKey(s.Key)))
+            {
+                substitutions[substitution.Key] = substitution.Value;
+            }
+
+            var customArgs = emailRecipient.CustomArguments ?? new Dictionary<string, string>();
+            foreach (var arg in CustomArguments.Where(a=>!customArgs.ContainsKey(a.Key)))
+            {
+                customArgs[arg.Key] = arg.Value;
+            }
+
             message.AddTo(new global::SendGrid.Helpers.Mail.EmailAddress(emailRecipient.EmailAddress.Address, emailRecipient.EmailAddress.Name), personalization: new Personalization()
             {
                 Ccs = ccAddresses != null && ccAddresses.Any() ? ccAddresses : null,
                 Bccs = bccAddresses != null && bccAddresses.Any() ? bccAddresses : null,
-                TemplateData = string.IsNullOrWhiteSpace(TemplateId) == false && emailRecipient.Substitutions.Any() ? emailRecipient.Substitutions : null,
-                CustomArgs = emailRecipient.CustomArguments.Any() ? emailRecipient.CustomArguments : null,
-                
+                TemplateData = string.IsNullOrWhiteSpace(TemplateId) == false && substitutions.Any() ? substitutions : null,
+                CustomArgs = customArgs.Any() ? customArgs : null
             });
 
             #region ReplyTo
@@ -660,8 +705,8 @@ namespace Southport.Messaging.Email.SendGrid.Message
             }
             else
             {
-                message.PlainTextContent = Substitute(Text, substitute ? emailRecipient.Substitutions : null);
-                message.HtmlContent = Substitute(Html, substitute ? emailRecipient.Substitutions : null);
+                message.PlainTextContent = Substitute(Text, substitute ? substitutions : null);
+                message.HtmlContent = Substitute(Html, substitute ? substitutions : null);
             }
 
             
@@ -724,17 +769,13 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         }
 
-        private string Substitute(string text, Dictionary<string, object> substitutions)
+        private static string Substitute(string text, Dictionary<string, object> substitutions)
         {
-            if (string.IsNullOrEmpty(text))
-            {
-                return "";
-            }
-            if (substitutions != null && substitutions.Any())
-            {
-                var compileFunc = Handlebars.Compile(text);
-                text = compileFunc(substitutions);
-            }
+            if (string.IsNullOrEmpty(text)) return "";
+            if (substitutions == null || !substitutions.Any()) return text;
+
+            var compileFunc = Handlebars.Compile(text);
+            text = compileFunc(substitutions);
 
             return text;
         }
@@ -769,6 +810,28 @@ namespace Southport.Messaging.Email.SendGrid.Message
             toAddresses = toAddressesTemp;
 
             return toAddresses;
+        }
+
+        #endregion
+
+        #region HTTP
+
+        private async Task<HttpResponseMessage> SendAsync(global::SendGrid.Helpers.Mail.SendGridMessage message, CancellationToken cancellationToken)
+        {
+            var json = message.Serialize();
+            var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
+            return await _httpClient.PostAsync("mail/send", stringContent, cancellationToken);
+        }
+
+        private async Task<string> GetBatchIdAsync(CancellationToken cancellationToken)
+        {
+            var response = await _httpClient.PostAsync("mail/batch", null, cancellationToken);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var responseString = await response.Content.ReadAsStringAsync(cancellationToken);
+            var batch = JsonConvert.DeserializeObject<SendGridBatchResponse>(responseString);
+            return batch.BatchId;
+
         }
 
         #endregion

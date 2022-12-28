@@ -11,13 +11,12 @@ using Ical.Net;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
+using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
 using Newtonsoft.Json;
 using Southport.Messaging.Email.Core.EmailAttachments;
 using Southport.Messaging.Email.Core.Recipient;
-using Southport.Messaging.Email.SendGrid.HttpClients;
-using Southport.Messaging.Email.SendGrid.Interfaces;
 using Southport.Messaging.Email.SendGrid.Message;
 using Xunit;
 using Xunit.Abstractions;
@@ -27,19 +26,20 @@ namespace Southport.Messaging.Email.SendGrid.Test
     public class SendGridMessageTest : IDisposable
     {
         private const string SubjectPrefix = "SendGrid - ";
-        private const string TemplateId = "d-12703069ad524547be220c8240965964";
-        private readonly SendGridHttpClient _httpClient;
-        private readonly HttpClient _internalHttpClient;
-        private readonly ISendGridOptions _options;
+        private const string TemplateId = "d-0ead838fffaa4c23b7a2ce3474619f3a";
+        private readonly HttpClient _httpClient;
+        private readonly EmailOptions _options;
         
         private readonly  ITestOutputHelper _output;
+        private readonly SendGridMessageFactory<EmailOptions> _factory;
 
         public SendGridMessageTest(ITestOutputHelper output)
         {
             _output = output;
             _options = Startup.GetOptions();
-            _internalHttpClient = new HttpClient();
-            _httpClient = new SendGridHttpClient(_internalHttpClient, _options);
+            _httpClient = new HttpClient();
+
+            _factory = new SendGridMessageFactory<EmailOptions>(_httpClient, Options.Create(_options));
         }
 
         #region Simple Message
@@ -47,9 +47,10 @@ namespace Southport.Messaging.Email.SendGrid.Test
         [Fact]
         public async Task Send_Simple_Message()
         {
-            var emailAddress = "test1@southport.solutions";
-            var message = new SendGridMessage(_httpClient, _options);
-            var responses = await message.AddFromAddress("test2@southport.solutions")
+            const string emailAddress = "test1@southport.solutions";
+            var message = _factory.Create();
+            var responses = await message
+                .SetFromAddress("test2@test.southport.solutions")
                 .AddToAddress(emailAddress)
                 .SetSubject($"{SubjectPrefix}Simple")
                 .SetText("This is a test email.").Send();
@@ -69,6 +70,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
             var handlerMock = new Mock<HttpMessageHandler>();
             var httpClient = new HttpClient(handlerMock.Object);
+            httpClient.BaseAddress = new Uri("https://api.sendgrid.com");
 
             var response = new HttpResponseMessage
             {
@@ -83,13 +85,12 @@ namespace Southport.Messaging.Email.SendGrid.Test
                     ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync(response);
 
-            var sendGridClient = new SendGridHttpClient(httpClient, _options);
-
-            var emailAddress = "michael@southportsolutions.com";
-            var replyTo = "test2@southport.solutions";
-            var replyToName = "name";
-            var message = new SendGridMessage(sendGridClient, _options);
-            var responses = await message.AddFromAddress("test2@southport.solutions")
+            const string emailAddress = "michael@southportsolutions.com";
+            const string replyTo = "test2@test.southport.solutions";
+            const string replyToName = "name";
+            var message = new SendGridMessage(httpClient, _options);
+            await message
+                .SetFromAddress("test2@test.southport.solutions")
                 .AddToAddress(emailAddress)
                 .SetSubject($"{SubjectPrefix}Simple")
                 .SetReplyTo(new EmailAddress(replyTo, replyToName))
@@ -97,7 +98,6 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
 
             var request = (HttpRequestMessage) handlerMock.Invocations[0].Arguments[0];
-
             var str = await request.Content.ReadAsStringAsync();
 
             var content = JsonConvert.DeserializeObject<dynamic>(str);
@@ -112,9 +112,10 @@ namespace Southport.Messaging.Email.SendGrid.Test
         [Fact]
         public async Task Send_Batch_Message()
         {
-            var emailAddress = "test1@southport.solutions";
-            var message = new SendGridMessage(_httpClient, _options);
-            var responses = await message.AddFromAddress("test2@southport.solutions")
+            const string emailAddress = "test1@southport.solutions";
+            var message = _factory.Create();
+            var responses = await message
+                .SetFromAddress("test2@test.southport.solutions")
                 .AddToAddress(emailAddress)
                 .SetSubject($"{SubjectPrefix}Simple")
                 .SetDeliveryTime(DateTime.UtcNow.AddSeconds(20))
@@ -132,9 +133,10 @@ namespace Southport.Messaging.Email.SendGrid.Test
         [Fact]
         public async Task Send_Simple_Message_Multiple_Same_Addresses()
         {
-            var emailAddress = "test1@southport.solutions";
-            var message = new SendGridMessage(_httpClient, _options);
-            var responses = await message.AddFromAddress("test2@southport.solutions")
+            const string emailAddress = "test1@southport.solutions";
+            var message = _factory.Create();
+            var responses = await message
+                .SetFromAddress("test2@test.southport.solutions")
                 .AddToAddress(emailAddress)
                 .AddCcAddress("test1@southport.solutions")
                 .AddCcAddress("test2@southport.solutions")
@@ -155,9 +157,10 @@ namespace Southport.Messaging.Email.SendGrid.Test
         [Fact]
         public async Task Send_Simple_Attachment_Message()
         {
-            var emailAddress = "test1@southport.solutions";
-            var message = new SendGridMessage(_httpClient, _options);
-            var responses = await message.AddFromAddress("test2@southport.solutions")
+            const string emailAddress = "test1@southport.solutions";
+            var message = _factory.Create();
+            var responses = await message
+                .SetFromAddress("test2@test.southport.solutions")
                 .AddToAddress(emailAddress)
                 .SetSubject($"{SubjectPrefix}Simple with Attachment")
                 .AddAttachments(new EmailAttachment()
@@ -184,12 +187,15 @@ namespace Southport.Messaging.Email.SendGrid.Test
         [Fact]
         public async Task Send_Message_Text_WithSubstitutions()
         {
-            var emailAddress = new EmailRecipient("test1@southport.solutions", substitutions: new Dictionary<string, object>() {["FirstName"] = "Robert"});
-            var message = new SendGridMessage(_httpClient, _options);
-            var responses = await message.AddFromAddress("test2@southport.solutions")
+            var emailAddress = new EmailRecipient("test1@southport.solutions", substitutions: new Dictionary<string, object> {["FirstName"] = "Robert"});
+            var message = _factory.Create();                                                                                                                           
+            var responses = await message
+                .SetFromAddress("test2@test.southport.solutions")
                 .AddToAddress(emailAddress)
                 .SetSubject($"{SubjectPrefix}Text with Substitutions")
-                .SetText("Dear {{FirstName}} This is a test email.").Send(true);
+                .SetText("Dear {{FirstName}}, This is a test email. {{SendDate}}")
+                .AddSubstitutions(new Dictionary<string, object>(){["FirstName"]= "Not Rob",["SendDate"]=DateTime.Today})
+                .Send(true);
 
 
             foreach (var response in responses)
@@ -210,8 +216,9 @@ namespace Southport.Messaging.Email.SendGrid.Test
                 new EmailRecipient("test1@southport.solutions", substitutions: new Dictionary<string, object>() {["FirstName"] = "David"})
             };
 
-            var message = new SendGridMessage(_httpClient, _options);
-            var responses = (await message.AddFromAddress("test2@southport.solutions")
+            var message = _factory.Create();
+            var responses = (await message
+                .SetFromAddress("test2@test.southport.solutions")
                 .AddToAddresses(emailRecipients)
                 .SetSubject($"{SubjectPrefix}Html With Substitutions")
                 .SetHtml(html).Send(true)).ToList();
@@ -246,8 +253,9 @@ namespace Southport.Messaging.Email.SendGrid.Test
                     }
                 }
             });
-            var message = new SendGridMessage(_httpClient, _options);
-            var responses = await message.AddFromAddress("test2@southport.solutions")
+            var message = _factory.Create();
+            var responses = await message
+                .SetFromAddress("test2@test.southport.solutions")
                 .AddToAddress(recipient)
                 .SetSubject($"{SubjectPrefix}Template")
                 .SetTemplate(TemplateId).Send();
@@ -273,7 +281,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
             };
             var recipient = new EmailRecipient("rob@southportsolutions.com", substitutions: new Dictionary<string, object>() {{"name", "John Doe"}, {"states", new List<string> {"CA", "CT", "TN"}}});
             var message = new SendGridMessage(_httpClient, options);
-            var responses = await message.AddFromAddress("test1@southport.solutions")
+            var responses = await message
+                .SetFromAddress("test1@test.southport.solutions")
                 .AddToAddress(recipient)
                 .SetSubject($"{SubjectPrefix}Test Email Addresses")
                 .SetTemplate(TemplateId).Send();
@@ -325,7 +334,8 @@ namespace Southport.Messaging.Email.SendGrid.Test
             });
 
             var message = new SendGridMessage(_httpClient, options);
-            var responses = await message.AddFromAddress("test1@southport.solutions")
+            var responses = await message
+                .SetFromAddress("test1@test.southport.solutions")
                 .AddToAddress(recipient)
                 .AddCcAddress("cc@test.com")
                 .AddBccAddress("bcc@test.com")
@@ -348,8 +358,9 @@ namespace Southport.Messaging.Email.SendGrid.Test
         public async Task Send_Simple_Message_Delayed_Delivery()
         {
             var emailAddress = "test1@southport.solutions";
-            var message = new SendGridMessage(_httpClient, _options);
-            var responses = await message.AddFromAddress("test2@southport.solutions")
+            var message = _factory.Create();
+            var responses = await message
+                .SetFromAddress("test2@test.southport.solutions")
                 .AddToAddress(emailAddress)
                 .SetSubject($"{SubjectPrefix}Simple - Delay 5 Minutes - Time {DateTime.UtcNow:G}")
                 .SetDeliveryTime(DateTime.UtcNow.AddMinutes(5))
@@ -367,8 +378,9 @@ namespace Southport.Messaging.Email.SendGrid.Test
         public async Task Send_Simple_Message_Delayed_1Day_Delivery()
         {
             var emailAddress = "test1@southport.solutions";
-            var message = new SendGridMessage(_httpClient, _options);
-            var responses = await message.AddFromAddress("test2@southport.solutions")
+            var message = _factory.Create();
+            var responses = await message
+                .SetFromAddress("test2@test.southport.solutions")
                 .AddToAddress(emailAddress)
                 .SetSubject($"{SubjectPrefix}Simple - Delay 1 Day - Time {DateTime.UtcNow:G}")
                 .SetDeliveryTime(DateTime.UtcNow.AddDays(1))
@@ -387,7 +399,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
         public void Dispose()
         {
-            _internalHttpClient.Dispose();
+            _httpClient.Dispose();
         }
     }
 }
