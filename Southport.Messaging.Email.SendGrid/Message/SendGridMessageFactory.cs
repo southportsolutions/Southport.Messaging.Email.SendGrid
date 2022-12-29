@@ -8,12 +8,12 @@ using Southport.Messaging.Email.SendGrid.Message.Interfaces;
 
 namespace Southport.Messaging.Email.SendGrid.Message
 {
-    public class SendGridMessageFactory<T> : ISendGridMessageFactory where T : class, ISendGridOptions
+    public class SendGridMessageFactory : ISendGridMessageFactory
     {
         private readonly HttpClient _httpClient;
         private readonly ISendGridOptions _options;
 
-        public SendGridMessageFactory(HttpClient httpClient, IOptions<T> options)
+        public SendGridMessageFactory(HttpClient httpClient, IOptions<SendGridOptions> options)
         {
             _httpClient = httpClient;
             

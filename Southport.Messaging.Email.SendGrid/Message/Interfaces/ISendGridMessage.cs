@@ -201,7 +201,7 @@ namespace Southport.Messaging.Email.SendGrid.Interfaces
         /// <param name="key">The key.</param>
         /// <param name="value">The value.</param>
         /// <returns>IEmailMessage.</returns>
-        new ISendGridMessage AddSubstitutions(string key, object value);
+        new ISendGridMessage AddSubstitution(string key, object value);
         /// <summary>
         /// Adds the substitutions.
         /// </summary>

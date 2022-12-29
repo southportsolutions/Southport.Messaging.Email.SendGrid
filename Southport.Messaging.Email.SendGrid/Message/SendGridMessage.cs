@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -379,12 +378,6 @@ namespace Southport.Messaging.Email.SendGrid.Message
             return this;
         }
 
-        public ISendGridMessage AddSubstitutions(string key, object value)
-        {
-            Substitutions[key] = value;
-            return this;
-        }
-
         public ISendGridMessage AddSubstitutions(Dictionary<string, object> substitutions)
         {
             foreach (var substitution in substitutions)
@@ -551,7 +544,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
             return AddCustomArguments(customArguments);
         }
 
-        IEmailMessageCore IEmailMessageCore.AddSubstitutions(string key, object value)
+        IEmailMessageCore IEmailMessageCore.AddSubstitution(string key, object value)
         {
             return AddSubstitution(key, value);
         }
