@@ -8,13 +8,13 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class SendGridExtensionsDependencyInjectionExtensions
 {
-    public static IServiceCollection AddMailGunServices(this IServiceCollection services, IConfigurationSection section)
+    public static IServiceCollection AddSendGridServices(this IServiceCollection services, IConfigurationSection section)
     {
         services.Configure<SendGridOptions>(section);
         services.AddHttpClient<ISendGridMessageFactory, SendGridMessageFactory>();
         return services;
     }
-    public static IServiceCollection AddExecutionLoggerServices(this IServiceCollection services, SendGridOptions options)
+    public static IServiceCollection AddSendGridServices(this IServiceCollection services, SendGridOptions options)
     {
         services.AddSingleton(Options.Options.Create(options));
         services.AddHttpClient<ISendGridMessageFactory, SendGridMessageFactory>();
