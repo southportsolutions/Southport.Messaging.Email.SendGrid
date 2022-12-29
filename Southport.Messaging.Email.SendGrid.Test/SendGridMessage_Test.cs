@@ -17,6 +17,7 @@ using Moq.Protected;
 using Newtonsoft.Json;
 using Southport.Messaging.Email.Core.EmailAttachments;
 using Southport.Messaging.Email.Core.Recipient;
+using Southport.Messaging.Email.SendGrid.Interfaces;
 using Southport.Messaging.Email.SendGrid.Message;
 using Xunit;
 using Xunit.Abstractions;
@@ -28,10 +29,10 @@ namespace Southport.Messaging.Email.SendGrid.Test
         private const string SubjectPrefix = "SendGrid - ";
         private const string TemplateId = "d-0ead838fffaa4c23b7a2ce3474619f3a";
         private readonly HttpClient _httpClient;
-        private readonly EmailOptions _options;
+        private readonly SendGridOptions _options;
         
         private readonly  ITestOutputHelper _output;
-        private readonly SendGridMessageFactory<EmailOptions> _factory;
+        private readonly SendGridMessageFactory _factory;
 
         public SendGridMessageTest(ITestOutputHelper output)
         {
@@ -39,7 +40,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
             _options = Startup.GetOptions();
             _httpClient = new HttpClient();
 
-            _factory = new SendGridMessageFactory<EmailOptions>(_httpClient, Options.Create(_options));
+            _factory = new SendGridMessageFactory(_httpClient, Options.Create(_options));
         }
 
         #region Simple Message
@@ -273,7 +274,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
         {
             var testAddresses = new List<string>() {"test2@southport.solutions", "test3@southport.solutions"};
 
-            var options = new EmailOptions()
+            var options = new SendGridOptions()
             {
                 ApiKey = _options.ApiKey,
                 TestEmailAddresses = string.Join(",", testAddresses),
@@ -300,7 +301,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
         {
             var testAddresses = new List<string>() {"test2@southport.solutions", "test3@southport.solutions"};
 
-            var options = new EmailOptions()
+            var options = new SendGridOptions()
             {
                 ApiKey = _options.ApiKey,
                 TestEmailAddresses = string.Join(",", testAddresses),

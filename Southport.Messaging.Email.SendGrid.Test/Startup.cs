@@ -7,9 +7,9 @@ namespace Southport.Messaging.Email.SendGrid.Test
 {
     public static class Startup
     {
-        public static EmailOptions Options { get; private set; }
+        public static SendGridOptions Options { get; private set; }
 
-        public static EmailOptions GetOptions()
+        public static SendGridOptions GetOptions()
         {
             if (Options == null)
             {
@@ -18,7 +18,7 @@ namespace Southport.Messaging.Email.SendGrid.Test
                     .AddJsonFile(Path.Combine((new DirectoryInfo(Environment.CurrentDirectory).Parent.Parent.Parent).ToString(), "appsettings.json"), true)
                     .AddEnvironmentVariables();
                 var config = configurationBuilder.Build();
-                Options = new EmailOptions();
+                Options = new SendGridOptions();
                 var section = config.GetSection("SendGrid");
                 section.Bind(Options);
 
