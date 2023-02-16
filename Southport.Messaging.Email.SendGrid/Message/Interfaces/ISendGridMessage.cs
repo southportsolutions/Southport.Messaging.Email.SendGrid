@@ -16,8 +16,8 @@ namespace Southport.Messaging.Email.SendGrid.Interfaces
         string BatchId { get; set; }
 
         ISendGridMessage SetReplyTo(IEmailAddress emailAddress);
-        ISendGridMessage SetCategory(string tag);
-        ISendGridMessage SetCategories(List<string> categories);
+        ISendGridMessage AddCategory(string category);
+        ISendGridMessage AddCategories(List<string> categories);
         ISendGridMessage AddHeader(string key, string header);
         ISendGridMessage SetBatchId(string batchId);
 

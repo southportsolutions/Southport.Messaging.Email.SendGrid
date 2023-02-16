@@ -254,13 +254,13 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         public List<string> Categories { get; set; } = new();
 
-        public ISendGridMessage SetCategory(string tag)
+        public ISendGridMessage AddCategory(string category)
         {
-            Categories.Add(tag);
+            Categories.Add(category);
             return this;
         }
 
-        public ISendGridMessage SetCategories(List<string> categories)
+        public ISendGridMessage AddCategories(List<string> categories)
         {
             if (categories == null || !categories.Any())
             {

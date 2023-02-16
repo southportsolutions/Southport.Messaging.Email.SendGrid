@@ -398,6 +398,32 @@ namespace Southport.Messaging.Email.SendGrid.Test
 
         #endregion
 
+        #region Categories Duplicated
+        
+        [Fact]
+        public async Task Send_Message_Duplicate_Categories()
+        {
+            const string emailAddress = "test1@southport.solutions";
+            var message = _factory.Create();
+            var responses = await message
+                .SetFromAddress("test2@test.southport.solutions")
+                .AddToAddress(emailAddress)
+                .SetSubject($"{SubjectPrefix}Simple")
+                .AddCategory("test_category")
+                .AddCategory("test_category")
+                .SetText("This is a test email.").Send();
+            
+
+            foreach (var response in responses)
+            {
+                _output.WriteLine(response.Message);
+                Assert.True(response.IsSuccessful);
+                Assert.Equal(emailAddress, response.EmailRecipient.EmailAddress.Address);
+            }
+        }
+
+        #endregion
+
         public void Dispose()
         {
             _httpClient.Dispose();
