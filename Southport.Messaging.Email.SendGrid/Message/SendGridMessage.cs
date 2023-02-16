@@ -708,7 +708,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
             #region Categories
 
-            message.Categories = Categories.Any() ? Categories : null;
+            message.Categories = Categories.Any() ? Categories.Distinct().ToList() : null;
 
             #endregion
 
