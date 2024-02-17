@@ -29,18 +29,6 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         public string From => FromAddress.ToString();
 
-        public ISendGridMessage AddFromAddress(IEmailAddress address)
-        {
-            FromAddress = address;
-            return this;
-        }
-
-        public ISendGridMessage AddFromAddress(string address, string name = null)
-        {
-            FromAddress = new EmailAddress(address, name);
-            return this;
-        }
-
         public ISendGridMessage SetFromAddress(IEmailAddress address)
         {
             FromAddress = address;
@@ -100,7 +88,6 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         public IEnumerable<IEmailAddress> CcAddressesValid => CcAddresses.Where(e => e.IsValid);
         public IEnumerable<IEmailAddress> CcAddressesInvalid =>  CcAddresses.Where(e => e.IsValid==false);
-        //private string Cc => string.Join(";", CcAddresses);
 
         public ISendGridMessage AddCcAddress(IEmailAddress address)
         {
@@ -409,24 +396,14 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
         #region Core Methods
 
-        IEmailMessageCore IEmailMessageCore.AddFromAddress(string emailAddress, string name)
-        {
-            return AddFromAddress(emailAddress, name);
-        }
-
-        IEmailMessageCore IEmailMessageCore.AddFromAddress(IEmailAddress emailAddress)
-        {
-            return AddFromAddress(emailAddress);
-        }
-
         IEmailMessageCore IEmailMessageCore.SetFromAddress(string emailAddress, string name)
         {
-            return AddFromAddress(emailAddress, name);
+            return SetFromAddress(emailAddress, name);
         }
 
         IEmailMessageCore IEmailMessageCore.SetFromAddress(IEmailAddress emailAddress)
         {
-            return AddFromAddress(emailAddress);
+            return SetFromAddress(emailAddress);
         }
 
         IEmailMessageCore IEmailMessageCore.AddToAddress(IEmailRecipient recipient)
