@@ -30,21 +30,6 @@ namespace Southport.Messaging.Email.SendGrid.Interfaces
         /// </summary>
         /// <param name="emailAddress">The address.</param>
         /// <returns>IEmailMessage.</returns>
-        [Obsolete("Use SetFromAddress")]
-        new ISendGridMessage AddFromAddress(IEmailAddress emailAddress);
-        /// <summary>
-        /// Adds from address.
-        /// </summary>
-        /// <param name="emailAddress">The address.</param>
-        /// <param name="name">The name.</param>
-        /// <returns>IEmailMessage.</returns>
-        [Obsolete("Use SetFromAddress")]
-        new ISendGridMessage AddFromAddress(string emailAddress, string name = null);
-        /// <summary>
-        /// Adds from address.
-        /// </summary>
-        /// <param name="emailAddress">The address.</param>
-        /// <returns>IEmailMessage.</returns>
         new ISendGridMessage SetFromAddress(IEmailAddress emailAddress);
         /// <summary>
         /// Adds from address.
