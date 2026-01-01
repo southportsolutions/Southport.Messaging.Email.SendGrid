@@ -9,7 +9,7 @@ namespace Southport.Messaging.Email.SendGrid.Test.Templates
 {
     public class DynamicTemplateServiceTests : IDisposable
     {
-        private const string TemplateId = "d-a043251c72e644888788ec6eb2fb6973";
+        private const string TemplateId = "d-a67d5e441aaa4e8cb79002c99996f7f9";
         private readonly HttpClient _httpClient;
 
         private readonly DynamicTemplateService _service;
@@ -25,7 +25,7 @@ namespace Southport.Messaging.Email.SendGrid.Test.Templates
         [Fact]
         public async Task GetTemplate()
         {
-            var versionId = "b304e4c1-bd50-4e0d-adb2-7ad57c723839";
+            var versionId = "b15b4e66-6c31-4a47-b0ed-1b9c6c4cc72d";
             var responseData = await _service.GetTemplateVersion(TemplateId, versionId, default);
 
             var template = responseData.Data;
@@ -33,7 +33,7 @@ namespace Southport.Messaging.Email.SendGrid.Test.Templates
             Assert.Equal(versionId, template.Id);
             Assert.Equal(TemplateId, template.TemplateId);
             Assert.Equal(versionId, template.Id);
-            Assert.Equal("Test Version", template.Name);
+            Assert.Equal("V1", template.Name);
             Assert.NotNull(template.Subject);
             Assert.NotNull(template.HtmlContent);
             Assert.NotNull(template.PlanContent);
