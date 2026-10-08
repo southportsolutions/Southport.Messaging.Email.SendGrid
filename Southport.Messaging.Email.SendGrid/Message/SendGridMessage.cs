@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -22,6 +23,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
     {
         private readonly HttpClient _httpClient;
         private readonly ISendGridOptions _options;
+        private readonly List<Stream> _streams = new();
 
         #region FromAddress
 
@@ -595,6 +597,52 @@ namespace Southport.Messaging.Email.SendGrid.Message
         #endregion
 
         #region Helpers
+        /// <summary>
+        /// Adds a single email attachment to the SendGrid message as a base64-encoded attachment.
+        /// </summary>
+        /// <param name="attachment">The attachment to add; stream, byte array, and string content are supported.</param>
+        /// <param name="content">The SendGrid message the attachment is added to.</param>
+        private void AddAttachment(IEmailAttachment attachment, ref global::SendGrid.Helpers.Mail.SendGridMessage content)
+        {
+            if (attachment is EmailAttachmentStream { Content: not null } streamAttachment)
+            {
+                // One message is built per recipient, so the stream is rewound before each read.
+                if (streamAttachment.Content.CanSeek)
+                {
+                    streamAttachment.Content.Seek(0, SeekOrigin.Begin);
+                }
+
+                using var memoryStream = new MemoryStream();
+                streamAttachment.Content.CopyTo(memoryStream);
+                var base64Content = Convert.ToBase64String(memoryStream.ToArray());
+                content.AddAttachment(streamAttachment.Filename, base64Content, streamAttachment.Type);
+                return;
+            }
+
+            if (attachment is EmailAttachmentBytes { Content: not null } emailAttachmentBytes)
+            {
+                var base64Content = Convert.ToBase64String(emailAttachmentBytes.Content);
+                content.AddAttachment(emailAttachmentBytes.Filename, base64Content, emailAttachmentBytes.Type);
+                return;
+            }
+
+            if (attachment is EmailAttachmentString { Content: not null } emailAttachmentString)
+            {
+                var base64Content = Convert.ToBase64String(Encoding.UTF8.GetBytes(emailAttachmentString.Content));
+                content.AddAttachment(emailAttachmentString.Filename, base64Content, emailAttachmentString.Type);
+            }
+        }
+
+        private Stream GetStream(string content)
+        {
+            var stream = new MemoryStream();
+            var sw = new StreamWriter(stream, Encoding.UTF8);
+            sw.Write(content);
+            sw.Flush(); //otherwise you are risking empty stream
+            stream.Seek(0, SeekOrigin.Begin);
+            _streams.Add(stream);
+            return stream;
+        }
 
         private Dictionary<IEmailRecipient, global::SendGrid.Helpers.Mail.SendGridMessage> GetMessageApi(bool substitute = false)
         {
@@ -730,7 +778,12 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
             foreach (var attachment in Attachments)
             {
-                message.AddAttachment(attachment.AttachmentFilename, attachment.Content, attachment.AttachmentType);
+                AddAttachment(attachment, ref message);
+            }
+
+            foreach (var recipientAttachment in emailRecipient.Attachments)
+            {
+                AddAttachment(recipientAttachment, ref message);
             }
 
             #endregion
@@ -805,5 +858,75 @@ namespace Southport.Messaging.Email.SendGrid.Message
         }
 
         #endregion
+        
+        public async ValueTask DisposeAsync()
+        {
+            // Dispose attachments (prefer async when available)
+            foreach (var emailAttachment in Attachments)
+            {
+                if (emailAttachment is IAsyncDisposable aad)
+                {
+                    await aad.DisposeAsync();
+                }
+            }
+
+            // Dispose recipient attachments
+            foreach (var emailRecipient in ToAddresses)
+            {
+                foreach (var attachment in emailRecipient.Attachments)
+                {
+                    if (attachment is IAsyncDisposable aad)
+                    {
+                        await aad.DisposeAsync();
+                    }
+                }
+            }
+
+            // Dispose internal streams
+            foreach (var stream in _streams)
+            {
+                if (stream is IAsyncDisposable streamAad)
+                {
+                    await streamAad.DisposeAsync();
+                }
+                else
+                {
+                    stream.Dispose();
+                }
+            }
+
+            _streams.Clear();
+        }
+
+        public void Dispose()
+        {// Dispose attachments (prefer async when available)
+            foreach (var attachment in Attachments)
+            {
+                if (attachment is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+
+            // Dispose recipient attachments
+            foreach (var emailRecipient in ToAddresses)
+            {
+                foreach (var attachment in emailRecipient.Attachments)
+                {
+                    if (attachment is IDisposable disposable)
+                    {
+                        disposable.Dispose();
+                    }
+                }
+            }
+
+            // Dispose internal streams
+            foreach (var stream in _streams)
+            {
+                stream.Dispose();
+            }
+
+            _streams.Clear();
+        }
     }
 }

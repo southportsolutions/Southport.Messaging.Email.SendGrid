@@ -9,7 +9,7 @@ namespace Southport.Messaging.Email.SendGrid.Test.Templates
 {
     public class DynamicTemplateServiceTests : IDisposable
     {
-        private const string TemplateId = "d-a67d5e441aaa4e8cb79002c99996f7f9";
+        private const string TemplateId = "d-a01c33a10e9d4b728bfd61d8b02ffc5c";
         private readonly HttpClient _httpClient;
 
         private readonly DynamicTemplateService _service;
@@ -25,7 +25,7 @@ namespace Southport.Messaging.Email.SendGrid.Test.Templates
         [Fact]
         public async Task GetTemplate()
         {
-            var versionId = "b15b4e66-6c31-4a47-b0ed-1b9c6c4cc72d";
+            var versionId = "f92b49d1-00b1-44b9-9cf0-cf2de003eec6";
             var responseData = await _service.GetTemplateVersion(TemplateId, versionId, default);
 
             var template = responseData.Data;
