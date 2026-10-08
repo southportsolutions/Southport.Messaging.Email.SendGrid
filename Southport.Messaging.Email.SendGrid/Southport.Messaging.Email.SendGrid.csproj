@@ -9,7 +9,7 @@
     <Description>SendGrid Implementation of the Southport.Messaging.Email.Core</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageReleaseNotes>Updated to net9.0 and net10.0 and updated packages. Removed net6.0 and net8.0.</PackageReleaseNotes>
+    <PackageReleaseNotes>Aligned the new attachment functionality and disposal.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
