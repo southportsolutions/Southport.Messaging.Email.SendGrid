@@ -606,6 +606,12 @@ namespace Southport.Messaging.Email.SendGrid.Message
         {
             if (attachment is EmailAttachmentStream { Content: not null } streamAttachment)
             {
+                // One message is built per recipient, so the stream is rewound before each read.
+                if (streamAttachment.Content.CanSeek)
+                {
+                    streamAttachment.Content.Seek(0, SeekOrigin.Begin);
+                }
+
                 using var memoryStream = new MemoryStream();
                 streamAttachment.Content.CopyTo(memoryStream);
                 var base64Content = Convert.ToBase64String(memoryStream.ToArray());
@@ -773,6 +779,11 @@ namespace Southport.Messaging.Email.SendGrid.Message
             foreach (var attachment in Attachments)
             {
                 AddAttachment(attachment, ref message);
+            }
+
+            foreach (var recipientAttachment in emailRecipient.Attachments)
+            {
+                AddAttachment(recipientAttachment, ref message);
             }
 
             #endregion
