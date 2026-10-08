@@ -24,6 +24,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
         private readonly HttpClient _httpClient;
         private readonly ISendGridOptions _options;
         private readonly List<Stream> _streams = new();
+        private readonly Dictionary<IEmailAttachment, string> _encodedAttachments = new();
 
         #region FromAddress
 
@@ -599,38 +600,51 @@ namespace Southport.Messaging.Email.SendGrid.Message
         #region Helpers
         /// <summary>
         /// Adds a single email attachment to the SendGrid message as a base64-encoded attachment.
+        /// The encoded content is cached so every recipient's message shares one copy.
         /// </summary>
         /// <param name="attachment">The attachment to add; stream, byte array, and string content are supported.</param>
         /// <param name="content">The SendGrid message the attachment is added to.</param>
         private void AddAttachment(IEmailAttachment attachment, ref global::SendGrid.Helpers.Mail.SendGridMessage content)
         {
-            if (attachment is EmailAttachmentStream { Content: not null } streamAttachment)
+            if (_encodedAttachments.TryGetValue(attachment, out var base64Content) == false)
             {
-                // One message is built per recipient, so the stream is rewound before each read.
-                if (streamAttachment.Content.CanSeek)
+                base64Content = EncodeAttachment(attachment);
+                if (base64Content == null)
                 {
-                    streamAttachment.Content.Seek(0, SeekOrigin.Begin);
+                    return;
                 }
 
+                _encodedAttachments[attachment] = base64Content;
+            }
+
+            content.AddAttachment(attachment.Filename, base64Content, attachment.Type);
+        }
+
+        /// <summary>
+        /// Base64-encodes the attachment content.
+        /// </summary>
+        /// <param name="attachment">The attachment to encode.</param>
+        /// <returns>The base64 string, or null when the attachment type is unsupported or its content is null.</returns>
+        private static string EncodeAttachment(IEmailAttachment attachment)
+        {
+            if (attachment is EmailAttachmentStream { Content: not null } streamAttachment)
+            {
                 using var memoryStream = new MemoryStream();
                 streamAttachment.Content.CopyTo(memoryStream);
-                var base64Content = Convert.ToBase64String(memoryStream.ToArray());
-                content.AddAttachment(streamAttachment.Filename, base64Content, streamAttachment.Type);
-                return;
+                return Convert.ToBase64String(memoryStream.ToArray());
             }
 
             if (attachment is EmailAttachmentBytes { Content: not null } emailAttachmentBytes)
             {
-                var base64Content = Convert.ToBase64String(emailAttachmentBytes.Content);
-                content.AddAttachment(emailAttachmentBytes.Filename, base64Content, emailAttachmentBytes.Type);
-                return;
+                return Convert.ToBase64String(emailAttachmentBytes.Content);
             }
 
             if (attachment is EmailAttachmentString { Content: not null } emailAttachmentString)
             {
-                var base64Content = Convert.ToBase64String(Encoding.UTF8.GetBytes(emailAttachmentString.Content));
-                content.AddAttachment(emailAttachmentString.Filename, base64Content, emailAttachmentString.Type);
+                return Convert.ToBase64String(Encoding.UTF8.GetBytes(emailAttachmentString.Content));
             }
+
+            return null;
         }
 
         private Stream GetStream(string content)
@@ -896,6 +910,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
             }
 
             _streams.Clear();
+            _encodedAttachments.Clear();
         }
 
         public void Dispose()
@@ -927,6 +942,7 @@ namespace Southport.Messaging.Email.SendGrid.Message
             }
 
             _streams.Clear();
+            _encodedAttachments.Clear();
         }
     }
 }
