@@ -641,7 +641,9 @@ namespace Southport.Messaging.Email.SendGrid.Message
 
             if (attachment is EmailAttachmentString { Content: not null } emailAttachmentString)
             {
-                return Convert.ToBase64String(Encoding.UTF8.GetBytes(emailAttachmentString.Content));
+                return emailAttachmentString.IsBase64Encoded 
+                    ? emailAttachmentString.Content 
+                    : Convert.ToBase64String(Encoding.UTF8.GetBytes(emailAttachmentString.Content));
             }
 
             return null;
