@@ -225,6 +225,33 @@ public class SendGridMessageTest : IDisposable
             Assert.Equal(emailAddress, response.EmailRecipient.EmailAddress.Address);
         }
     }
+
+    /// <summary>
+    /// Sends the dummy PDF as an EmailAttachmentString whose content is already base64 encoded.
+    /// </summary>
+    [Fact]
+    public async Task Send_Simple_AttachmentString_Base64Encoded_Message()
+    {
+        await using var stream = await FileHelpers.OpenFileStreamAsync();
+        var bytes = await FileHelpers.StreamToBytesAsync(stream);
+        var base64Content = Convert.ToBase64String(bytes);
+
+        var emailAddress = "test1@southport.solutions";
+        await using var message = _factory.Create();
+        var responses = await message
+            .SetFromAddress("test2@southport.solutions")
+            .AddToAddress(emailAddress)
+            .SetSubject("Test Email Base64 String Attachment")
+            .AddAttachments(new EmailAttachmentString(base64Content, "dummy_base64.pdf", "application/pdf", isBase64Encoded: true))
+            .SetText("This is a test email.").Send();
+
+        foreach (var response in responses)
+        {
+            _output.WriteLine(response.Message);
+            Assert.True(response.IsSuccessful);
+            Assert.Equal(emailAddress, response.EmailRecipient.EmailAddress.Address);
+        }
+    }
     #endregion
 
     #region Message With Sutstituions
